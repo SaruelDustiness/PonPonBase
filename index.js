@@ -3,18 +3,22 @@ require('dotenv').config({ path: './chaves/chaves.env' });
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
-// const { token } = require('./config/config.json');
 
 const PonPon = new Client({
 	intents: [
 		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.MessageContent
 	// eslint-disable-next-line comma-dangle
-	]
+	],
+  disableMentions: 'everyone',
 });
 
 // Leitura de comandos
 PonPon.commands = new Collection();
+PonPon.cooldowns = new Collection();
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
@@ -36,36 +40,18 @@ for (const folder of commandFolders) {
 	}
 }
 
-// Verifica os comandos
-PonPon.on(Events.InteractionCreate, async interaction => {
-	if (!interaction.isChatInputCommand()) return;
+//Carregamento dos eventos ready.js e criarInteracao.js
+const eventosDir = path.join(__dirname, 'eventos');
+const eventosFiles = fs.readdirSync(eventosDir).filter(file => file.endsWith('.js'));
 
-	const command = interaction.client.commands.get(interaction.commandName);
-
-	if (!command) {
-		console.error(`Não foi encontrado o comando ${interaction.commandName}.`);
-		return;
-	}
-
-	try {
-		await command.execute(interaction);
-	}
-	catch (error) {
-		console.error(error);
-		if (interaction.replied || interaction.deferred) {
-			await interaction.followUp({ content: 'Ocorreu um erro ao tentar executar este comando!', ephemeral: true });
-		}
-		else {
-			await interaction.reply({ content: 'Ocorreu um erro ao tentar executar este comando!', ephemeral: true });
-		}
-	}
-});
-
-// const prefix = '!';
-
-PonPon.once(Events.ClientReady, p => {
-	console.log(`Pronto! Login realizado como ${p.user.tag}`);
-});
-
+for (const file of eventosFiles){
+  const filePath = path.join(eventosDir, file);
+  const evento = require(filePath);
+  if (evento.once){
+    PonPon.once(evento.name, (...args) => evento.execute(...args));
+  } else {
+    PonPon.on(evento.name, (...args) => evento.execute(...args));
+  }
+}
 
 PonPon.login(process.env.TOKEN);

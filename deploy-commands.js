@@ -39,7 +39,7 @@ const rest = new REST().setToken(token);
 
 		// O comando put atualiza todos os comandos para o seu servidor
 		const data = await rest.put(
-			Routes.applicationGuildCommands(clientId, guildId),
+			Routes.applicationCommands(clientId),
 			{ body: commands },
 		);
 
